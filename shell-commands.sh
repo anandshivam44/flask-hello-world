@@ -1,3 +1,7 @@
+# Check active ports
+sudo lsof -i -P -n | grep LISTEN
+sudo netstat -tulpn | grep LISTEN
+sudo ss -tulpn | grep LISTEN
 # see which user can run docker
 grep docker /etc/group
 # Add users to use jenkins without root or sudo
