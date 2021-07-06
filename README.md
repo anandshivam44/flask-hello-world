@@ -13,3 +13,8 @@ sudo pip3 install Flask
 python3 hello.py
 ```
 Visit [127.0.0.1:5000](http://127.0.0.1:5000/) or [localhost:5000](http://localhost:5000/) in Browser or Postman
+
+Directory structure
+.
+├── hello.py
+└── README.md
