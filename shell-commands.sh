@@ -1,3 +1,10 @@
+# see which user can run docker
+grep docker /etc/group
+# Add users to use jenkins without root or sudo
+sudo groupadd docker # create group
+sudo usermod -aG docker ${USER}
+sudo usermod -aG docker jenkins
+
 # update repository
 sudo yum update -y
 # install Docker
@@ -70,4 +77,6 @@ sudo systemctl status jenkins
 
 ##Configure Jenkins
 sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+
+
 
