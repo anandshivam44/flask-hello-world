@@ -13,6 +13,8 @@ RUN pip3 install Flask
 
 COPY . /app
 
+EXPOSE 8081
+
 ENTRYPOINT [ "python3" ]
 
 CMD [ "hello.py" ]
