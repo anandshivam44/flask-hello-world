@@ -1,31 +1,15 @@
-# This is a Flask Hello World Application
+# Deploy Flask Hello World Application on EKS
+## Automate Build using Jenkins
 
-### Prerequisites
-- python3 install on container environment
-- Flask installed on container environment
-- Docker installed and active on host machine
-  
-### To Install Flask
-```
-sudo pip3 install Flask
-```
-### Test this Application on your local machine
-```
-python3 hello.py
-```
-Visit [127.0.0.1:8081](http://127.0.0.1:8081/) or [localhost:8081](http://localhost:8081/) in Browser or Postman
-
-
-##Deploy Application on EKS
 Directory structure
 ```
 .
 ├── Dockerfile          Docker file for container
-├── hello.py            Application python file
+├── hello.py            Hello World python file
 ├── README.md           This README file you are reading right now
 └── shell-commands.sh   A list of useful commands
 ```
-### Step 0 > Configure your environment from basics
+### Step 0 > Start and Configure your environment
  - Create Amazon Linux ec2 instance
  - install docker
  - install git
@@ -37,18 +21,19 @@ sudo groupadd docker # create group
 sudo usermod -aG docker ${USER} # add currrent user
 sudo usermod -aG docker jenkins # add jenkins
 ```
- - logout and login from ec2 user. Better to restart your instance to apply changes
+ - logout and login from ec2 user or Better to restart your instance to apply changes
  - Test your Flask Application on host machine (optional)
 ```
 git clone https://github.com/anandshivam44/flask-hello-world.git
 cd flask-hello-world
-pip install Flask
+sudo yum install python3-pip
+pip3 install Flask
 python3 hello.py
 ```
 open ec2 instance ip in a new tab with port 8081 
-If it does not open check match all ports and check all secu
+If it does not open check match all ports and check all security groups
   `
-### Step 1 > Create Dockerfile
+### Step 1 > Create/Analyse Dockerfile
 ```
 # pick ubuntu image from Docker Hub
 FROM ubuntu:20.04
@@ -72,7 +57,8 @@ EXPOSE 8081
 ENTRYPO
 CMD [ "hello.py" ]
 ```
-### Step 2 > Build Docker Image from Dockerfile
+## Step 2.x is optional and for testing only
+### Step 2.0 > Build Docker Image from Dockerfile manually
 ```
 docker build -t flask-tutorial:v1 .
 ```
@@ -90,13 +76,13 @@ Container runs in https://localhost:8081
 
 
 
-### Step 3 > Login to DockerHub
+### Step 2.2 > Login to DockerHub
 Enter this command and login your hub.docker.com credentials
 
 ```
 docker login
 ```
-### Step 4 > Commit your container and push to dockerhub
+### Step 2.3 > Commit your container and push to dockerhub
 
 Copy ID of your Docker Container in clipboard from
 ```
@@ -106,25 +92,43 @@ Replace 68339d202950 with your container ID and commit your changes
 ```
 docker commit 68339d202950 anandshivam44/flask-hello-world:v1
 ```
-Push to Docker Hub. Replace anandshivam44 with your id, flask-hello-world with your container name and v1 with your tag name
+Push to Docker Hub. Replace anandshivam44 with your id, flask-hello-world with your container name and v1 with your tag name. Replce similar reference in this article.
 ```
 docker push anandshivam44/flask-hello-world:v1
 ```
-### Step 5 > Create Cluster in Amazon ECS
-Create cluster in Amazon EKS
- - Goto AWS EKS > Cluster and click on Create Cluster
+### Step 3 > Jenkins: Build container on new commit from Github and push to Docker Hub
+ - Open Jenkins on ec2 instance. Open public ip on port 8080
+ - First install Docker Plugins 
+  Goto Manage Jenkins > Plugins >  Available
+  Search Docker and install Docker plugin by CloudBees (CloudBees is the maintainer of Jenkins project) 
+  Install Docker Plugin
+ - Goto HomePage 
+ - Create new job
+ - Create a new Freestyle Project. Click OK
+ - In the configuration page add Github URL https://github.com/anandshivam44/flask-hello-world
+ - In Source code management select git add repository git url https://github.com/anandshivam44/flask-hello-world.git
+ - Since this repo is public no need to give Credentials
+ - In Build Triggers choose Poll SCM. Add cron-job task "* * * * *" without quotes. This will check Github repo every minute for any change. If there is a change it will start a new build 
+ - In Build section > Add Build Step > Choose 'Docker Build and Publish'
+ - Add Docker Hub repsitory. In my case anandshivam44/flask-hello-world. The format is username/imagename
+ - Choose/Add dockehub credentials
+ - Save change
+ - Click Build now
+### Step 4 > Create Cluster in Amazon ECS
+Create cluster in Amazon ECS
+ - Goto AWS ECS > Cluster and click on Create Cluster
  - Select cluster template as Networking only. Click NEXT.
  - Type a cluster name. Do not create VPC for demo easy deplyment. Leave all to default and click NEXT.
-### Step 6 > Craete and Define Task
+### Step 5 > Create and Define Task
  - Goto Task Definition. Choose AWS Fargare. Click Next.
  - Type a Task Definition name of your choice
  - Select Task role to None. We don't need a role for now
  - Set Task memory to 1 GB and CPY to 0.25 vCPU
  - Click Add container definition
- - Type a container name of your wish
- - Set container image to. It will download automatically from Docker Hub
+ - Type a container name that points to dockerhub anandshivam44/flask-hello-world
+ - Set container image to. It will download from Docker Hub
   ```
-anandshivam44/flask-hello-world:v1
+anandshivam44/flask-hello-world
   ```
  - Set Soft limit to 300 MB
  - Set Port Mapping to 8081
@@ -146,7 +150,7 @@ anandshivam44/flask-hello-world:v1
  - Leave Register Target Type as empty
  - Review and create LB
  - Wait for ABS to create before you proceed. It will take some minutes.
-### Step 6 > Create Service
+### Step 7 > Create Service
  - Go back to ECS > Clusters > Choose your cluster > Services
  - Clck create cluster
  - Choose launch type AWS Fargate
@@ -164,15 +168,13 @@ anandshivam44/flask-hello-world:v1
  - Leave all default. Click Next
  - Leave Auto Scaling to derfault. Click Next
  - Click Create service
-### Step 7 > Verify Security Groups
+### Step 8 > Verify Security Groups
  - Till now one Security Group (SG) was assigned to ous ECS Cluster and one to our ECS ec2 instance. Goto SG and allow LB to talk to Cluster ec2. In inbound rules allow all TCP from LB Security Group to ECS ec2 so that health check suceeds.
-### Step 7 > Hurray! Test you connection
+### Step 9 > Hurray! Test you connection
  - Goto LB. Copy its dns url. and test your connection. You should see a hello world on your screen
-### Step 8 > Cleaning up
- - Delete all docker images and running containers
-```
-# Remove all Docker containers locally
-sudo docker rm -vf $(docker ps -a -q)
-# Remove all Docker Images locally
-sudo docker rmi -f $(docker images -a -q)
-```
+### Step 10 > Cleaning up
+ - Delete ec2 instance
+ - Goto Dockerhub and delete your repository
+ - Goto AWS ECS and Delete Cluster and Task
+ - Goto AWS ALB and delete LB
+
